@@ -1,11 +1,13 @@
 package kr.co.ts.springboot.web;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.co.ts.springboot.domain.posts.Posts;
 import kr.co.ts.springboot.domain.posts.PostsRepository;
 import kr.co.ts.springboot.web.dto.PostsSaveRequestDto;
 import kr.co.ts.springboot.web.dto.PostsUpdateRequestDto;
 import org.assertj.core.api.Assertions;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,10 +18,22 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MockMvcBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 
 import java.time.LocalDateTime;
 import java.util.List;
+
+import org.springframework.http.MediaType;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -32,6 +46,18 @@ public class PostsApiControllerTest {
     private TestRestTemplate restTemplate;
     @Autowired
     private PostsRepository postsRepository;
+
+    @Autowired
+    private WebApplicationContext context;
+
+    private MockMvc mvc;
+
+    @Before
+    public void setup(){
+        mvc = MockMvcBuilders.webAppContextSetup(context)
+                .apply(SecurityMockMvcConfigurers.springSecurity())
+                .build();
+    }
 
     @After
     public void tearDown() throws Exception{
@@ -52,11 +78,21 @@ public class PostsApiControllerTest {
         String url = "http://localhost:" + port + "/api/v1/posts";
 
         //when
+        /*
         ResponseEntity<Long> responseEntity = restTemplate.postForEntity(url,requestDto,Long.class);
+         */
+
+        mvc.perform( post(url)
+                .contentType(MediaType.APPLICATION_JSON_UTF8)
+                .content(new ObjectMapper().writeValueAsString(requestDto)))
+                .andExpect(status().isOk());
 
         //then
+        /*
+
         Assertions.assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
         Assertions.assertThat(responseEntity.getBody()).isGreaterThan(0L);
+         */
 
         List<Posts> all = postsRepository.findAll();
 
@@ -67,7 +103,8 @@ public class PostsApiControllerTest {
     }
 
     @Test
-    public void Posts_수정(){
+    @WithMockUser(roles="USER")
+    public void Posts_수정() throws Exception{
         //given
         Posts savedPosts = postsRepository.save(
                 Posts.builder().title("title")
@@ -90,11 +127,22 @@ public class PostsApiControllerTest {
         HttpEntity<PostsUpdateRequestDto> requestEntity =  new HttpEntity<>(requestDto);
 
         //when
+        /*
         ResponseEntity<Long> responseEntity = restTemplate.exchange(url,HttpMethod.PUT,requestEntity,Long.class);
+         */
+
+        mvc.perform( put(url)
+                        .contentType(MediaType.APPLICATION_JSON_UTF8)
+                        .content( new ObjectMapper().writeValueAsString(requestDto) )
+                )
+                .andExpect(status().isOk());
 
         //then
+        /*
+
         Assertions.assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
         Assertions.assertThat(responseEntity.getBody()).isGreaterThan(0L);
+         */
 
         List<Posts> all = postsRepository.findAll();
 
@@ -103,6 +151,7 @@ public class PostsApiControllerTest {
     }
 
     @Test
+    @WithMockUser(roles="USER")
     public void BaseTimeEentity_등록(){
         //given
         LocalDateTime now = LocalDateTime.of(2019,6,4,0,0,0);
